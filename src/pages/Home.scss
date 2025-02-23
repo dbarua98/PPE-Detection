@@ -17,3 +17,23 @@
 .ant-space-item{
     
 }
+
+.hidden-container {
+    /* Push the container off-screen: */
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    
+    /* Or, you can make the container 1x1 pixel, fully transparent */
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    overflow: hidden;
+  }
+
+  .offscreen {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    /* optionally: width: 1px; height: 1px; opacity: 0; overflow: hidden; */
+  }

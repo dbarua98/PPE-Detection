@@ -18,7 +18,6 @@ function AuthProvider(props) {
   }, []);
 
   const signIn = useCallback(async (email, password) => {
-    debugger
     const result = await sendSignInRequest(email, password);
     if (result.isOk) {
       setUser(result.data);
@@ -29,6 +28,7 @@ function AuthProvider(props) {
 
   const signOut = useCallback(() => {
     setUser(undefined);
+    localStorage.removeItem('token');
   }, []);
 
 

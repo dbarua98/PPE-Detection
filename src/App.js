@@ -52,8 +52,6 @@ function App() {
   // }
 
   if (user) {
-  debugger
-
     return <Content />;
   }
 
