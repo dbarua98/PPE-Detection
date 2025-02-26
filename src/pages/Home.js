@@ -9,22 +9,20 @@ import ChangePasswordPopup from "../layouts/ChangePasswordPopup";
 import Reports from "../layouts/Reports";
 import ViolationList from "../layouts/ViolationList";
 import "./Home.scss";
+import { settingIcon } from "../utils/base-64-Icons";
 
 const Home = () => {
-  // Loader state: initially false, then set true after 5 seconds.
   const [isUILoaded, setIsUILoaded] = useState(false);
-
   const [addCameraPopup, setAddCameraPopup] = useState(false);
   const [cameraAdded, setCameraAdded] = useState(false);
   const [changePasswordPopup, setChangePasswordPopup] = useState(false);
+  // Initialize tabKey from localStorage if available; default to "1"
+  const [tabKey, setTabKey] = useState(() => localStorage.getItem("currentTabKey") || "1");
   const { user, signOut } = useAuth();
-
-  // Cameras state
+  const [VisibleCams, setVisibleCams] = useState([]);
   const [cameras, setCameras] = useState([]);
-  // Refs for the image elements
   const cameraRefs = useRef([]);
 
-  // Fetch cameras from API
   const fetchCameras = async () => {
     try {
       const baseURL = process.env.REACT_APP_BASE_URL;
@@ -100,7 +98,6 @@ const Home = () => {
       .then((result) => {
         if (result) {
           console.log("Detection Response:", result);
-          // Process detection result as needed
         }
       })
       .catch((error) => {
@@ -108,15 +105,17 @@ const Home = () => {
       });
   };
 
-  // Set an interval to call sendFrames every second once cameras are loaded
+  // Set an interval to call sendFrames every second, but only if tabKey is "2" or "3"
   useEffect(() => {
-    const intervalId = setInterval(() => {
-      sendFrames();
-    }, 1000);
-    return () => clearInterval(intervalId);
-  }, [cameras]);
+    if (tabKey === "2" || tabKey === "3") {
+      const intervalId = setInterval(() => {
+        sendFrames();
+      }, 1000);
+      return () => clearInterval(intervalId);
+    }
+  }, [cameras, tabKey]);
 
-  // Set a timeout for showing the UI after 5 seconds
+  // Set a timeout for showing the UI after 500ms
   useEffect(() => {
     const hasReloaded = localStorage.getItem("reloaded");
     const uiTimeout = setTimeout(() => {
@@ -125,14 +124,12 @@ const Home = () => {
         window.location.reload();
       } else {
         setIsUILoaded(true);
-        // Optionally, clear the flag if you no longer need it:
         localStorage.removeItem("reloaded");
       }
-    }, 0);
+    }, 500);
     return () => clearTimeout(uiTimeout);
   }, []);
 
-  // Tab items for your page
   const items = [
     {
       key: "1",
@@ -142,6 +139,9 @@ const Home = () => {
           setaddCameraPopup={setAddCameraPopup}
           cameraAdded={cameraAdded}
           setCameraAdded={setCameraAdded}
+          setVisibleCams={setVisibleCams}
+          setCameras={setCameras}
+          tabKey={tabKey}
         />
       ),
     },
@@ -157,7 +157,10 @@ const Home = () => {
     },
   ];
 
+  // On every tab change, store the new tab key and force a reload
   const onChange = (key) => {
+    localStorage.setItem("currentTabKey", key);
+    window.location.reload();
     console.log("Tab changed to:", key);
   };
 
@@ -210,15 +213,10 @@ const Home = () => {
               <Avatar style={{ backgroundColor: "#87d068" }} icon={<UserOutlined />} />
               <p className="m-0">{"Deepesh"}</p>
             </div>
-            <Dropdown
-              menu={menuProps}
-              className="h-75 setting-icon"
-              trigger={["click"]}
-              arrow
-            >
+            <Dropdown menu={menuProps} className="h-75 setting-icon" trigger={["click"]} arrow>
               <Button>
                 <Space>
-                  <img src="/path/to/settingIcon" alt="settings" width={58} />
+                  <img src={settingIcon} alt="failed" width={58} className="w-auto" />
                   <DownOutlined />
                 </Space>
               </Button>
@@ -226,28 +224,31 @@ const Home = () => {
           </div>
         </div>
         <div className="mt-2">
-          <Tabs defaultActiveKey="1" items={items} onChange={onChange} />
+          {/* Use activeKey to control the Tabs */}
+          <Tabs activeKey={tabKey} items={items} onChange={onChange} />
         </div>
       </div>
 
-      {/* Keep the camera images off-screen so they load and are available for detection */}
-      <div style={{ position: "absolute", left: "-9999px", top: "-9999px" }}>
-        {cameras.map((camera, index) => (
-          <div key={camera.camera_unique_id} className="camera-item">
-            <img
-              ref={(el) => (cameraRefs.current[index] = el)}
-              data-camera-id={camera.camera_unique_id}
-              src={camera.ip}
-              alt={`Camera ${index + 1}`}
-              crossOrigin="anonymous"
-              onLoad={() =>
-                console.log("Image loaded for camera", camera.camera_unique_id)
-              }
-              style={{ width: "320px", height: "240px" }}
-            />
-          </div>
-        ))}
-      </div>
+      {/* Render off-screen camera images only if tabKey is "2" or "3" */}
+      {(tabKey === "2" || tabKey === "3") && (
+        <div>
+          {cameras?.map((camera, index) => (
+            <div key={camera.camera_unique_id} className="camera-item" style={{ position: "absolute", left: "-9999px", top: "-9999px" }}>
+              <img
+                ref={(el) => (cameraRefs.current[index] = el)}
+                data-camera-id={camera?.camera_unique_id}
+                src={camera?.ip}
+                alt={`Camera ${index + 1}`}
+                crossOrigin="anonymous"
+                onLoad={() =>
+                  console.log("Image loaded for camera", camera.camera_unique_id)
+                }
+                style={{ width: "320px", height: "240px" }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
 
       {addCameraPopup && (
         <AddCameraPopup

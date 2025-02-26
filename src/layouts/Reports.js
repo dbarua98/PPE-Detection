@@ -11,6 +11,10 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import { Form, DatePicker, Button } from "antd";
+import moment from "moment";
+
+const { RangePicker } = DatePicker;
 
 // Register Chart.js components
 ChartJS.register(
@@ -25,20 +29,23 @@ ChartJS.register(
 );
 
 const ReportsCharts = () => {
-  // Summary data state
+  // State for Summary Data
   const [summaryData, setSummaryData] = useState([]);
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [errorSummary, setErrorSummary] = useState(null);
+  const [summaryDateRange, setSummaryDateRange] = useState([
+    moment("2025-01-01"),
+    moment("2025-03-31"),
+  ]);
 
-  // Detections data state
-  const [detectionsData, setDetectionsData] = useState([]);
-  const [loadingDetections, setLoadingDetections] = useState(true);
-  const [errorDetections, setErrorDetections] = useState(null);
-
-  // Daily data state
+  // State for Daily Data
   const [dailyData, setDailyData] = useState([]);
   const [loadingDaily, setLoadingDaily] = useState(true);
   const [errorDaily, setErrorDaily] = useState(null);
+  const [dailyDateRange, setDailyDateRange] = useState([
+    moment("2023-01-01"),
+    moment("2025-03-31"),
+  ]);
 
   // Helper function to create common request options
   const getRequestOptions = () => {
@@ -51,10 +58,13 @@ const ReportsCharts = () => {
     };
   };
 
-  // Fetch Summary Data
-  useEffect(() => {
+  // Fetch Summary Data based on the provided date range
+  const fetchSummaryData = (range) => {
+    setLoadingSummary(true);
+    const startDate = range[0].format("YYYY-MM-DD");
+    const endDate = range[1].format("YYYY-MM-DD");
     fetch(
-      "http://34.46.36.202/reports/summary?start_date=2025-01-01&end_date=2025-03-31",
+      `http://34.46.36.202/reports/summary?start_date=${startDate}&end_date=${endDate}`,
       getRequestOptions()
     )
       .then((response) => {
@@ -70,42 +80,19 @@ const ReportsCharts = () => {
         setErrorSummary(error);
         setLoadingSummary(false);
       });
-  }, []);
+  };
 
-  // Fetch Detections Data
-  useEffect(() => {
+  // Fetch Daily Data based on the provided date range
+  const fetchDailyData = (range) => {
+    setLoadingDaily(true);
+    const startDate = range[0].format("YYYY-MM-DD");
+    const endDate = range[1].format("YYYY-MM-DD");
     fetch(
-      "http://34.46.36.202/reports/detections?start_date=2025-01-01&end_date=2025-03-31",
+      `http://34.46.36.202/reports/daily?start_date=${startDate}&end_date=${endDate}`,
       getRequestOptions()
     )
       .then((response) => response.text())
       .then((result) => {
-        console.log("Detections raw result:", result);
-        try {
-          const data = JSON.parse(result);
-          setDetectionsData(data);
-        } catch (err) {
-          console.error("Error parsing detections data:", err);
-          setDetectionsData([]);
-        }
-        setLoadingDetections(false);
-      })
-      .catch((error) => {
-        console.error("Error fetching detections data:", error);
-        setErrorDetections(error);
-        setLoadingDetections(false);
-      });
-  }, []);
-
-  // Fetch Daily Data
-  useEffect(() => {
-    fetch(
-      "http://34.46.36.202/reports/daily?start_date=2023-01-01&end_date=2025-03-31",
-      getRequestOptions()
-    )
-      .then((response) => response.text())
-      .then((result) => {
-        console.log("Daily raw result:", result);
         try {
           const data = JSON.parse(result);
           setDailyData(data);
@@ -120,12 +107,29 @@ const ReportsCharts = () => {
         setErrorDaily(error);
         setLoadingDaily(false);
       });
+  };
+
+  // Initial data fetch on mount using the default date ranges
+  useEffect(() => {
+    fetchSummaryData(summaryDateRange);
+    fetchDailyData(dailyDateRange);
   }, []);
 
-  // Show loading message if any fetch is in progress
-  if (loadingSummary || loadingDetections || loadingDaily) {
-    return <p>Loading data...</p>;
-  }
+  // Handle Summary Date Range form submission
+  const handleSummaryDateSubmit = (values) => {
+    if (values.dateRange && values.dateRange.length === 2) {
+      setSummaryDateRange(values.dateRange);
+      fetchSummaryData(values.dateRange);
+    }
+  };
+
+  // Handle Daily Date Range form submission
+  const handleDailyDateSubmit = (values) => {
+    if (values.dateRange && values.dateRange.length === 2) {
+      setDailyDateRange(values.dateRange);
+      fetchDailyData(values.dateRange);
+    }
+  };
 
   // Prepare Summary Chart Data
   const summaryChartData = {
@@ -139,7 +143,7 @@ const ReportsCharts = () => {
     ],
   };
 
-  // Prepare Daily Chart Data using the correct key "detection_date"
+  // Prepare Daily Chart Data using the key "detection_date"
   const dailyChartData = {
     labels: dailyData.map((item) => item.detection_date),
     datasets: [
@@ -153,90 +157,58 @@ const ReportsCharts = () => {
     ],
   };
 
-  // Helper function to format detection result string into pretty JSON
-  const formatDetectionResult = (resultStr) => {
-    try {
-      // Convert Python-like quotes and booleans to JSON valid strings
-      let validJson = resultStr.replace(/'/g, '"');
-      validJson = validJson.replace(/True/g, "true").replace(/False/g, "false");
-      const parsed = JSON.parse(validJson);
-      return JSON.stringify(parsed, null, 2);
-    } catch (error) {
-      return resultStr;
-    }
-  };
-
   return (
     <div style={{ padding: "20px" }}>
       <h1>Reports</h1>
 
-      {/* Summary Chart */}
+      {/* Summary Section */}
       <div style={{ width: "80%", margin: "20px auto" }}>
         <h2>Camera Detections Summary</h2>
+        <Form
+          layout="inline"
+          onFinish={handleSummaryDateSubmit}
+          initialValues={{ dateRange: summaryDateRange }}
+          style={{ marginBottom: "20px" }}
+        >
+          <Form.Item name="dateRange" label="Date Range">
+            <RangePicker />
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit">
+              Update Summary
+            </Button>
+          </Form.Item>
+        </Form>
         {errorSummary && <p>Error: {errorSummary.message}</p>}
-        <Bar data={summaryChartData} options={{ responsive: true }} />
-      </div>
-
-      {/* Detections Data Cards */}
-      <div style={{ width: "80%", margin: "20px auto" }}>
-        <h2>Detections Data</h2>
-        {errorDetections && <p>Error: {errorDetections.message}</p>}
-        {detectionsData.length > 0 ? (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-              gap: "20px",
-            }}
-          >
-            {detectionsData.map((record) => (
-              <div
-                key={record.id}
-                style={{
-                  border: "1px solid #ddd",
-                  borderRadius: "8px",
-                  padding: "16px",
-                  backgroundColor: "#fff",
-                }}
-              >
-                <h3>Detection #{record.id}</h3>
-                <p>
-                  <strong>Camera ID:</strong> {record.camera_id}
-                </p>
-                <p>
-                  <strong>Created At:</strong>{" "}
-                  {new Date(record.created_at).toLocaleString()}
-                </p>
-                <p>
-                  <strong>Image:</strong> {record.image_name}
-                </p>
-                <p>
-                  <strong>Detection Result:</strong>
-                </p>
-                <pre
-                  style={{
-                    backgroundColor: "#f9f9f9",
-                    padding: "8px",
-                    borderRadius: "4px",
-                    whiteSpace: "pre-wrap",
-                    wordWrap: "break-word",
-                  }}
-                >
-                  {formatDetectionResult(record.detection_result)}
-                </pre>
-              </div>
-            ))}
-          </div>
+        {loadingSummary ? (
+          <p>Loading summary data...</p>
         ) : (
-          <p>No detections data available.</p>
+          <Bar data={summaryChartData} options={{ responsive: true }} />
         )}
       </div>
 
-      {/* Daily Chart */}
+      {/* Daily Section */}
       <div style={{ width: "80%", margin: "20px auto" }}>
         <h2>Daily Data</h2>
+        <Form
+          layout="inline"
+          onFinish={handleDailyDateSubmit}
+          initialValues={{ dateRange: dailyDateRange }}
+          style={{ marginBottom: "20px" }}
+        >
+          <Form.Item name="dateRange" label="Date Range">
+            <RangePicker />
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit">
+              Update Daily
+            </Button>
+          </Form.Item>
+        </Form>
         {errorDaily && <p>Error: {errorDaily.message}</p>}
-        {dailyData.length > 0 ? (
+        {loadingDaily ? (
+          <p>Loading daily data...</p>
+        ) : dailyData.length > 0 ? (
           <Line data={dailyChartData} options={{ responsive: true }} />
         ) : (
           <p>No daily data available.</p>
