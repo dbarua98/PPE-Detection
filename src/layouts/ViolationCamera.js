@@ -1,6 +1,14 @@
 import { DownOutlined, UserOutlined } from "@ant-design/icons";
-import { Button, Dropdown, message, Modal, Space, Switch } from "antd";
-import {List, Skeleton } from "antd";
+import {
+  Button,
+  Dropdown,
+  message,
+  Modal,
+  Space,
+  Switch,
+  List,
+  Skeleton,
+} from "antd";
 import React, { useState, useEffect, useRef } from "react";
 import cameraDummyImage from "../images/dummyCamera.webp";
 import "./ViolationCamera.scss";
@@ -19,6 +27,12 @@ const ViolationCamera = (props) => {
   const [isFullScreenOpen, setIsFullScreenOpen] = useState(false);
   const [fullScreenSrc, setFullScreenSrc] = useState("");
   const [violatedCameras, setViolatedCameras] = useState([]);
+
+  // Read the selected range from sessionStorage or default to [0, 5]
+  const storedRange = sessionStorage.getItem("selectedRange");
+  const initialRange = storedRange ? JSON.parse(storedRange) : [0, 5];
+  const [selectedRange, setSelectedRange] = useState(initialRange);
+  const [videos, setVideos] = useState([]);
 
   const openFullScreenView = (src) => {
     setFullScreenSrc(src);
@@ -54,6 +68,7 @@ const ViolationCamera = (props) => {
       props?.setCameraAdded(false);
     }
   };
+
   useEffect(() => {
     fetchList();
   }, [props?.cameraAdded]);
@@ -93,13 +108,11 @@ const ViolationCamera = (props) => {
           // Draw the current frame from the image element
           ctx.drawImage(imgElement, 0, 0);
 
-          //     // Create a promise for blob creation
+          // Create a promise for blob creation
           const blobPromise = new Promise((resolve) => {
             canvas.toBlob((blob) => {
               if (blob) {
-                // Get the original camera ID
                 const originalId = imgElement.getAttribute("data-camera-id");
-                // Format the camera ID to match the required format
                 const cameraId = `${originalId || index + 1}`;
                 resolve({ blob, cameraId });
               } else {
@@ -117,19 +130,17 @@ const ViolationCamera = (props) => {
       Promise.all(blobPromises)
         .then((results) => {
           let hasValidImages = false;
-
           // Add valid blobs to FormData
           results.forEach((result) => {
             if (result) {
               formData.append(result.cameraId, result.blob);
               hasValidImages = true;
-              console.log("Adding camera:", result.cameraId); // Debug log
+              console.log("Adding camera:", result.cameraId);
             }
           });
-
           // Only make the API call if we have valid images
           if (hasValidImages) {
-            console.log("Sending FormData with cameras:", formData.getAll); // Debug log
+            console.log("Sending FormData with cameras:", formData.getAll);
             return fetch("http://34.46.36.202/ppe/detect", {
               method: "POST",
               headers: {
@@ -150,14 +161,10 @@ const ViolationCamera = (props) => {
         .then((result) => {
           if (result) {
             console.log("PPE Detection Response:", result);
-            // Handle the detection results here
             if (result.results) {
               const violated = result.results
-
                 .filter((r) => r.detections?.violations?.length > 0)
-
                 .map((r) => r.camera_id.toString());
-
               setViolatedCameras(violated);
             }
           }
@@ -167,13 +174,10 @@ const ViolationCamera = (props) => {
         });
     }, 1000);
 
-    // Cleanup function
     return () => clearInterval(intervalId);
-  }, [list]); // Re-run if the list of cameras changes
+  }, [list]);
 
-  const [videos, setVideos] = useState([]);
-  const [selectedRange, setSelectedRange] = useState([0, 5]);
-
+  // Generate dropdown items; when a page is selected, store the new range in sessionStorage and reload.
   const generateDropdownItems = () => {
     const totalCameras = videos.length;
     const pages = Math.ceil(totalCameras / 5);
@@ -184,17 +188,10 @@ const ViolationCamera = (props) => {
       items.push({
         label: `${start + 1}-${Math.min(end, totalCameras)}`,
         key: `${i}`,
-        // Update range and call setVisibleCams when clicked.
         onClick: () => {
           const newRange = [start, end];
-          setSelectedRange(newRange);
-          const newVisibleVideos = videos.slice(newRange[0], newRange[1]);
-          const hiddenVideos = videos.filter(
-            (cam) => !newVisibleVideos.includes(cam)
-          );
-          console.log("dfghj", hiddenVideos);
-          // props.setVisibleCams({ visible: newVisibleVideos, hidden: hiddenVideos });
-          props.setVisibleCams([hiddenVideos]);
+          sessionStorage.setItem("selectedRange", JSON.stringify(newRange));
+          window.location.reload();
         },
         icon: <UserOutlined />,
       });
@@ -236,37 +233,42 @@ const ViolationCamera = (props) => {
     },
   ];
 
-  const handleMenuClick = (e) => {
-    message.info("Click on menu item.");
-    console.log("click", e);
-  };
-
   const menuProps = {
     items: generateDropdownItems(),
   };
+
   const visibleVideos = videos.slice(selectedRange[0], selectedRange[1]);
   const hiddenVideos = videos.filter(
     (video, index) => index < selectedRange[0] || index >= selectedRange[1]
   );
 
+  // Assign a ref using the video's actual index in the "videos" array.
+  const assignRef = (video, el) => {
+    if (el) {
+      const idx = videos.indexOf(video);
+      if (idx !== -1) {
+        cameraRefs.current[idx] = el;
+      }
+    }
+  };
+
   const getCameraStyle = (cameraId, defaultStyle = {}) => {
-    // If the cameraId is of the form "camera_375", extract "375"
     const extractedId =
       cameraId && cameraId.includes("_") ? cameraId.split("_")[1] : cameraId;
-
     return violatedCameras.includes(extractedId?.toString())
       ? { ...defaultStyle, border: "2px solid red" }
       : defaultStyle;
   };
+
   if (props.tabKey !== "1") {
     return null;
   }
 
   return (
     <>
-      {props.tabKey == "1" ? (
+      {props.tabKey === "1" ? (
         <div>
-          <div className="d-flex justify-content-between  ">
+          <div className="d-flex justify-content-between">
             <Dropdown menu={menuProps} className="fw-semibold p-3">
               <Button>
                 <Space>
@@ -276,21 +278,6 @@ const ViolationCamera = (props) => {
                 </Space>
               </Button>
             </Dropdown>
-            {/* <div className="d-flex gap-2">
-          <div className="d-flex gap-2 align-items-center">
-            <span className="item-detect">{"Gloves"}</span>
-            <Switch defaultChecked title="Gloves" />
-          </div>
-          <div className="d-flex gap-2 align-items-center">
-            <span className="item-detect">{"Mask"}</span>
-            <Switch defaultChecked title="Mask" />
-          </div>
-          <div className="d-flex gap-2 align-items-center">
-            <span className="item-detect">{"Helmet"}</span>
-            <Switch defaultChecked title="Helmet" />
-          </div>
-          <Button onClick={() => setIsModalOpen(true)}>All Violation</Button>
-        </div> */}
           </div>
           <div className="mt-5">
             <div className="row">
@@ -299,18 +286,16 @@ const ViolationCamera = (props) => {
                   <div key={i} className="col-12 col-md-6">
                     <div
                       className="gallery-item"
-                      style={getCameraStyle(visibleVideos[i]?.camera_unique_id)}
+                      style={getCameraStyle(video?.camera_unique_id)}
                     >
                       <img
-                        ref={(el) => {
-                          cameraRefs.current[i] = el;
-                        }}
-                        data-camera-id={visibleVideos[i]?.camera_unique_id}
-                        src={`${visibleVideos[i]?.ip}`}
+                        ref={(el) => assignRef(video, el)}
+                        data-camera-id={video?.camera_unique_id}
+                        src={`${video?.ip}`}
                         alt="IP Camera"
                         crossOrigin="anonymous"
                         style={{ height: "270px", width: "100%" }}
-                        className="img-fluid rounded-4 "
+                        className="img-fluid rounded-4"
                         autoPlay
                         playsInline
                         muted
@@ -330,9 +315,7 @@ const ViolationCamera = (props) => {
                       style={getCameraStyle(visibleVideos[0]?.camera_unique_id)}
                     >
                       <img
-                        ref={(el) => {
-                          cameraRefs.current[0] = el;
-                        }}
+                        ref={(el) => assignRef(visibleVideos[0], el)}
                         data-camera-id={visibleVideos[0]?.camera_unique_id}
                         src={`${visibleVideos[0]?.ip}`}
                         alt="IP Camera"
@@ -366,9 +349,7 @@ const ViolationCamera = (props) => {
                           )}
                         >
                           <img
-                            ref={(el) => {
-                              cameraRefs.current[1] = el;
-                            }}
+                            ref={(el) => assignRef(visibleVideos[1], el)}
                             data-camera-id={visibleVideos[1]?.camera_unique_id}
                             src={
                               isFullScreenOpen ? "" : `${visibleVideos[1]?.ip}`
@@ -406,9 +387,7 @@ const ViolationCamera = (props) => {
                           )}
                         >
                           <img
-                            ref={(el) => {
-                              cameraRefs.current[2] = el;
-                            }}
+                            ref={(el) => assignRef(visibleVideos[2], el)}
                             data-camera-id={visibleVideos[2]?.camera_unique_id}
                             src={`${visibleVideos[2]?.ip}`}
                             alt="IP Camera"
@@ -465,19 +444,14 @@ const ViolationCamera = (props) => {
                       className="gallery-item position-relative"
                       style={getCameraStyle(list[0]?.camera_unique_id, {
                         height: "545px",
-
-                        width: "1020px",
-
+                        width: "670px",
                         backgroundColor: "black",
-
                         cursor: "pointer",
                       })}
                       onClick={() => handleVideoClick(0)}
                     >
                       <img
-                        ref={(el) => {
-                          cameraRefs.current[0] = el;
-                        }}
+                        ref={(el) => assignRef(visibleVideos[0], el)}
                         data-camera-id={visibleVideos[0]?.camera_unique_id}
                         src={`${visibleVideos[0]?.ip}`}
                         alt="IP Camera"
@@ -516,12 +490,10 @@ const ViolationCamera = (props) => {
                           <div
                             className="gallery-item position-relative"
                             style={getCameraStyle(list[i]?.camera_unique_id)}
-                            // onClick={() => handleVideoClick(i + 1)}
+                            onClick={() => openFullScreenView(list[i]?.ip)}
                           >
                             <img
-                              ref={(el) => {
-                                cameraRefs.current[i + 1] = el;
-                              }}
+                              ref={(el) => assignRef(visibleVideos[i + 1], el)}
                               data-camera-id={
                                 visibleVideos[i + 1]?.camera_unique_id
                               }
@@ -548,7 +520,6 @@ const ViolationCamera = (props) => {
                                 width: "20%",
                                 marginLeft: "20px",
                               }}
-                              // onClick={() => handleVideoClick(i + 1)}
                               onClick={() => openFullScreenView(list[i]?.ip)}
                             >{`CAM ${i + 2}`}</div>
                           </div>
@@ -561,15 +532,12 @@ const ViolationCamera = (props) => {
                           <div
                             className="gallery-item position-relative"
                             style={getCameraStyle(list[i]?.camera_unique_id)}
-                            // onClick={() => handleVideoClick(i + 1)}
+                            onClick={() => openFullScreenView(list[i]?.ip)}
                           >
                             <img
-                              // ref={cameraRef}
-                              ref={(el) => {
-                                cameraRefs.current[5 + i] = el;
-                              }}
-                              data-camera-id={hiddenVideos[i]?.camera_unique_id}
-                              src={`${hiddenVideos[i]?.ip}`}
+                              ref={(el) => assignRef(video, el)}
+                              data-camera-id={video?.camera_unique_id}
+                              src={`${video?.ip}`}
                               alt="IP Camera"
                               crossOrigin="anonymous"
                               style={{
@@ -592,7 +560,6 @@ const ViolationCamera = (props) => {
                                 width: "20%",
                                 marginLeft: "20px",
                               }}
-                              // onClick={() => handleVideoClick(i + 1)}
                               onClick={() => openFullScreenView(list[i]?.ip)}
                             >{`CAM ${i + 2}`}</div>
                           </div>
@@ -603,78 +570,74 @@ const ViolationCamera = (props) => {
                 </>
               )}
             </div>
-
-            <div>
-              <Dropdown
-                menu={menuProps}
-                className="mt-5 p-4 fw-semibold  "
-                trigger={["click"]}
-              >
-                <Button>
-                  <Space>
-                    List of all Cameras
-                    <DownOutlined />
-                  </Space>
-                </Button>
-              </Dropdown>
-            </div>
-            <div>
-              <List
-                className="demo-loadmore-list border border-1 px-4 mt-3"
-                // loading={loading}
-                itemLayout="horizontal"
-                dataSource={list}
-                renderItem={(item) => (
-                  <List.Item>
-                    <Skeleton avatar title={false} loading={loading} active>
-                      <List.Item.Meta
-                        title={
-                          <a
-                            href="#"
-                            className="text-decoration-none fs-6 fw-bolder"
-                          >
-                            {item?.camera_unique_id}
-                          </a>
-                        }
-                      />
-                      <Button
-                        type="primary"
-                        className="rounded-4 me-2 fw-semibold"
-                      >
-                        View
-                      </Button>
-                      <Button
-                        className="rounded-4 me-2 text-primary border-primary fw-semibold"
-                        onClick={() => handleEditClick(item)}
-                      >
-                        Edit
-                      </Button>
-                      {/* <Button className="rounded-4 text-danger border-danger fw-semibold">Remove</Button> */}
-                      <Button
-                        className="rounded-4 text-danger border-danger fw-semibold"
-                        onClick={() => handleRemove(item?.camera_unique_id)}
-                      >
-                        Remove
-                      </Button>
-                    </Skeleton>
-                    <EditCameraPopup
-                      isVisible={isEditPopupVisible}
-                      onClose={handleClosePopup}
-                      initialData={{
-                        camera_unique_id: selectedItem?.camera_unique_id,
-                        violations: selectedItem?.violations || [],
-                      }}
+          </div>
+          <div>
+            <Dropdown
+              menu={menuProps}
+              className="mt-5 p-4 fw-semibold"
+              trigger={["click"]}
+            >
+              <Button>
+                <Space>
+                  List of all Cameras
+                  <DownOutlined />
+                </Space>
+              </Button>
+            </Dropdown>
+          </div>
+          <div>
+            <List
+              className="demo-loadmore-list border border-1 px-4 mt-3"
+              itemLayout="horizontal"
+              dataSource={list}
+              renderItem={(item) => (
+                <List.Item>
+                  <Skeleton avatar title={false} loading={loading} active>
+                    <List.Item.Meta
+                      title={
+                        <a
+                          href="#"
+                          className="text-decoration-none fs-6 fw-bolder"
+                        >
+                          {item?.camera_unique_id}
+                        </a>
+                      }
                     />
-                  </List.Item>
-                )}
-              />
-            </div>
+                    <Button
+                      type="primary"
+                      className="rounded-4 me-2 fw-semibold"
+                    >
+                      View
+                    </Button>
+                    <Button
+                      className="rounded-4 me-2 text-primary border-primary fw-semibold"
+                      onClick={() => handleEditClick(item)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      className="rounded-4 text-danger border-danger fw-semibold"
+                      onClick={() => handleRemove(item?.camera_unique_id)}
+                    >
+                      Remove
+                    </Button>
+                  </Skeleton>
+                  <EditCameraPopup
+                    isVisible={isEditPopupVisible}
+                    onClose={handleClosePopup}
+                    initialData={{
+                      camera_unique_id: selectedItem?.camera_unique_id,
+                      violations: selectedItem?.violations || [],
+                    }}
+                  />
+                </List.Item>
+              )}
+            />
           </div>
           <AllViolationPopup
             isModalOpen={isModalOpen}
             setIsModalOpen={setIsModalOpen}
           />
-          {/* Full-Screen Modal for Camera */}
           <Modal
             visible={isFullScreenOpen}
             footer={null}
@@ -701,6 +664,25 @@ const ViolationCamera = (props) => {
               }}
             />
           </Modal>
+          {/* Extra container for hidden videos (display: none) so that detection API sees all cameras */}
+          <div style={{ display: "none" }}>
+            {hiddenVideos.map((video, i) => (
+              <div key={video.camera_unique_id}>
+                <img
+                  ref={(el) => assignRef(video, el)}
+                  data-camera-id={video?.camera_unique_id}
+                  src={`${video?.ip}`}
+                  alt={`IP Camera hidden ${i}`}
+                  crossOrigin="anonymous"
+                  style={{ height: "270px", width: "100%" }}
+                  className="img-fluid rounded-4"
+                  autoPlay
+                  playsInline
+                  muted
+                />
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <></>
