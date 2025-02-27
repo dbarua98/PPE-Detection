@@ -91,25 +91,47 @@ const ViolationCamera = (props) => {
   }, [props?.cameraAdded]);
 
   // CAPTURE FRAMES FROM ALL CAMERAS AND SEND IN A SINGLE API CALL
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      const formData = new FormData();
-      const blobPromises = [];
-      console.log("cameraRefsrty", cameraRefs);
-      // Loop through each camera image element
-      cameraRefs.current.forEach((imgElement, index) => {
-        if (imgElement && imgElement.naturalWidth && imgElement.naturalHeight) {
-          // Create an off-screen canvas
+  useEffect(() => { 
+    const intervalId = setInterval(() => { 
+      const formData = new FormData(); 
+      const imagePromises = []; 
+      console.log("cameraRefs", cameraRefs); 
+      
+      // Loop through each camera image element 
+      cameraRefs.current.forEach((imgElement, index) => { 
+        if (imgElement && imgElement.naturalWidth && imgElement.naturalHeight) { 
+          // Create an off-screen canvas with exact 640x640 dimensions
           const canvas = document.createElement("canvas");
-          canvas.width = imgElement.naturalWidth;
-          canvas.height = imgElement.naturalHeight;
+          canvas.width = 640;
+          canvas.height = 640;
           const ctx = canvas.getContext("2d");
-
-          // Draw the current frame from the image element
-          ctx.drawImage(imgElement, 0, 0);
-
-          // Create a promise for blob creation
-          const blobPromise = new Promise((resolve) => {
+          
+          // Calculate scaling to fit the image into 640x640 square while maintaining aspect ratio
+          const aspectRatio = imgElement.naturalWidth / imgElement.naturalHeight;
+          let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+          
+          if (aspectRatio > 1) {
+            // Image is wider than tall
+            drawHeight = 640;
+            drawWidth = drawHeight * aspectRatio;
+            offsetX = -(drawWidth - 640) / 2;
+          } else {
+            // Image is taller than wide
+            drawWidth = 640;
+            drawHeight = drawWidth / aspectRatio;
+            offsetY = -(drawHeight - 640) / 2;
+          }
+          
+          // Fill with black background first (optional - creates black bars for non-square images)
+          ctx.fillStyle = "black";
+          ctx.fillRect(0, 0, 640, 640);
+          
+          // Center and draw the image
+          ctx.drawImage(imgElement, offsetX, offsetY, drawWidth, drawHeight);
+          
+          // Create a promise for JPEG image creation
+          const imagePromise = new Promise((resolve) => {
+            // Convert to JPEG using toBlob directly
             canvas.toBlob((blob) => {
               if (blob) {
                 const originalId = imgElement.getAttribute("data-camera-id");
@@ -118,64 +140,89 @@ const ViolationCamera = (props) => {
               } else {
                 resolve(null);
               }
-            }, "image/png");
+            }, "image/jpeg", 0.9); // Explicitly specify JPEG format
           });
-
-          blobPromises.push(blobPromise);
-        }
-      });
-      console.log("blobpromise", blobPromises);
-      console.log("videos", videos);
-      // Wait for all blobs to be created
-      Promise.all(blobPromises)
-        .then((results) => {
-          let hasValidImages = false;
-          // Add valid blobs to FormData
-          results.forEach((result) => {
-            if (result) {
-              formData.append(result.cameraId, result.blob);
-              hasValidImages = true;
-              console.log("Adding camera:", result.cameraId);
-            }
-          });
-          // Only make the API call if we have valid images
-          if (hasValidImages) {
-            console.log("Sending FormData with cameras:", formData.getAll);
-            return fetch("http://34.46.36.202/ppe/detect", {
-              method: "POST",
-              headers: {
-                "X-Session-Token": "bb86b35928774a05a615e6f0a6d1c031",
-              },
-              body: formData,
-            });
-          }
-        })
-        .then((response) => {
-          if (response) {
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-          }
-        })
-        .then((result) => {
-          if (result) {
-            console.log("PPE Detection Response:", result);
-            if (result.results) {
-              const violated = result.results
-                .filter((r) => r.detections?.violations?.length > 0)
-                .map((r) => r.camera_id.toString());
-              setViolatedCameras(violated);
-            }
-          }
-        })
-        .catch((error) => {
-          console.error("Error in frame capture process:", error);
-        });
-    }, 1000);
-
-    return () => clearInterval(intervalId);
+          
+          imagePromises.push(imagePromise);
+        } 
+      }); 
+      
+      console.log("imagePromises", imagePromises); 
+      console.log("videos", videos); 
+      
+      // Wait for all images to be created 
+      Promise.all(imagePromises) 
+        .then((results) => { 
+          let hasValidImages = false; 
+          
+          // Add valid images to FormData 
+          results.forEach((result) => { 
+            if (result) { 
+              // Add JPEG blob directly to FormData
+              formData.append(result.cameraId, result.blob, `camera_${result.cameraId}.jpg`); // Ensure filename has .jpg extension
+              hasValidImages = true; 
+              console.log("Adding camera:", result.cameraId); 
+            } 
+          }); 
+          
+          // Only make the API call if we have valid images 
+          if (hasValidImages) { 
+            console.log("Sending FormData with cameras:", formData.getAll); 
+            return fetch("http://35.208.97.216/ppe/detect", { 
+              method: "POST", 
+              headers: { 
+                "X-Session-Token": "bb86b35928774a05a615e6f0a6d1c031", 
+              }, 
+              body: formData, 
+            }); 
+          } 
+        }) 
+        .then((response) => { 
+          if (response) { 
+            if (!response.ok) { 
+              throw new Error(`HTTP error! status: ${response.status}`); 
+            } 
+            return response.json(); 
+          } 
+        }) 
+        .then((result) => { 
+          if (result) { 
+            console.log("PPE Detection Response:", result); 
+            if (result.results) { 
+              const violated = result.results 
+                .filter((r) => r?.violations?.length > 0) 
+                .map((r) => r.camera_id.toString()); 
+              setViolatedCameras(violated); 
+            } 
+          } 
+        }) 
+        .catch((error) => { 
+          console.error("Error in frame capture process:", error); 
+        }); 
+    }, 1000); 
+    
+    return () => clearInterval(intervalId); 
   }, [list]);
+  
+  // Helper function to convert base64 data URI to Blob
+  function dataURItoBlob(dataURI) {
+    // Convert base64/URLEncoded data component to raw binary data
+    const byteString = atob(dataURI.split(',')[1]);
+    
+    // Separate out the mime component
+    const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+    
+    // Write the bytes of the string to an ArrayBuffer
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    
+    // Write the ArrayBuffer to a blob
+    return new Blob([ab], { type: mimeString });
+  }
 
   // Generate dropdown items; when a page is selected, store the new range in sessionStorage and reload.
   const generateDropdownItems = () => {
@@ -442,11 +489,13 @@ const ViolationCamera = (props) => {
                   <div className="col-12 col-lg-6 large">
                     <div
                       className="gallery-item position-relative"
-                      style={getCameraStyle(list[0]?.camera_unique_id, {
+                      style={getCameraStyle(visibleVideos[0]?.camera_unique_id, {
                         height: "545px",
                         width: "670px",
                         backgroundColor: "black",
                         cursor: "pointer",
+                        borderRadius:"16px",
+
                       })}
                       onClick={() => handleVideoClick(0)}
                     >
@@ -457,8 +506,8 @@ const ViolationCamera = (props) => {
                         alt="IP Camera"
                         crossOrigin="anonymous"
                         style={{
-                          height: "545px",
-                          width: "1020px",
+                          height: "100%",
+                          width: "100%",
                           backgroundColor: "black",
                           cursor: "pointer",
                         }}
@@ -489,7 +538,7 @@ const ViolationCamera = (props) => {
                         <div key={i} className="col-6 small">
                           <div
                             className="gallery-item position-relative"
-                            style={getCameraStyle(list[i]?.camera_unique_id)}
+                            style={getCameraStyle(visibleVideos[i]?.camera_unique_id)}
                             onClick={() => openFullScreenView(list[i]?.ip)}
                           >
                             <img
@@ -531,7 +580,7 @@ const ViolationCamera = (props) => {
                         <div key={i} className="col-6 small">
                           <div
                             className="gallery-item position-relative"
-                            style={getCameraStyle(list[i]?.camera_unique_id)}
+                            style={getCameraStyle(hiddenVideos[i]?.camera_unique_id)}
                             onClick={() => openFullScreenView(list[i]?.ip)}
                           >
                             <img

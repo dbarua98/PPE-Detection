@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Modal, Form, Input, Select, message } from "antd";
 import axios from "axios";
 
@@ -7,52 +7,57 @@ const { Option } = Select;
 const EditCameraPopup = ({ isVisible, onClose, initialData }) => {
   const [form] = Form.useForm();
   const baseURL = process.env.REACT_APP_BASE_URL;
+  // Use a flag so we only set the initial values once per open
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    if (initialData) {
+    if (isVisible && initialData && !initialized) {
       form.setFieldsValue({
-        camera_unique_id: initialData?.camera_unique_id,
-        violations: [...(initialData?.violations || [])],
+        camera_unique_id: initialData.camera_unique_id,
+        violations: initialData.violations || [],
       });
+      setInitialized(true);
     }
-  }, [initialData, form]);
+  }, [isVisible, initialData, form, initialized]);
 
   const handleSave = () => {
     form
       .validateFields()
-      .then(values => {
+      .then((values) => {
         const { camera_unique_id, violations } = values;
-
-        // Prepare payload as expected by the replace_violations API
-        const payload = {
-          camera_unique_id,
-          violations,
-        };
+        const payload = { camera_unique_id, violations };
 
         axios
           .patch(`${baseURL}/camera/replace_violations`, payload)
-          .then(response => {
+          .then(() => {
             message.success("Camera violations replaced successfully!");
-            onClose();
+            handleClose();
           })
-          .catch(error => {
+          .catch((error) => {
             console.error("API Error:", error);
             message.error("Failed to replace camera violations.");
           });
       })
-      .catch(info => {
+      .catch((info) => {
         console.error("Validation Failed:", info);
       });
+  };
+
+  const handleClose = () => {
+    setInitialized(false);
+    form.resetFields();
+    onClose();
   };
 
   return (
     <Modal
       title="Edit Camera Details"
       visible={isVisible}
-      onCancel={onClose}
+      onCancel={handleClose}
       onOk={handleSave}
       okText="Save"
       cancelText="Cancel"
+      destroyOnClose
     >
       <Form form={form} layout="vertical">
         {/* Camera Unique ID (read-only) */}
@@ -64,7 +69,7 @@ const EditCameraPopup = ({ isVisible, onClose, initialData }) => {
           <Input readOnly />
         </Form.Item>
 
-        {/* Multi-select Violations */}
+        {/* Multi-select Violations with tag mode */}
         <Form.Item
           name="violations"
           label="Violations"
@@ -76,17 +81,22 @@ const EditCameraPopup = ({ isVisible, onClose, initialData }) => {
           ]}
         >
           <Select
-            mode="multiple"
+            mode="tags"
             placeholder="Select or enter violations"
             allowClear
             tokenSeparators={[","]}
+            style={{ width: "100%" }}
           >
-            <Option value="No gloves">No gloves</Option>
-            <Option value="No boots">No boots</Option>
-            <Option value="No safety vest">No safety vest</Option>
-            <Option value="Traffic Light Violation">
-              Traffic Light Violation
-            </Option>
+            <Option value="Hardhat">Hardhat</Option>
+            <Option value="Mask">Mask</Option>
+            <Option value="NO-Hardhat">NO-Hardhat</Option>
+            <Option value="NO-Safety Vest">NO-Safety Vest</Option>
+            <Option value="Person">Person</Option>
+            <Option value="Safety Cone">Safety Cone</Option>
+            <Option value="Safety Vest">Safety Vest</Option>
+            <Option value="machinery">machinery</Option>
+            <Option value="vehicle">vehicle</Option>
+            <Option value="NO-Mask">NO-Mask</Option>
           </Select>
         </Form.Item>
       </Form>

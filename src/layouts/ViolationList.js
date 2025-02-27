@@ -35,7 +35,7 @@ const ViolationList = () => {
   // This uses the API endpoint as described:
   // static/2_20250208100634_Screenshot 2024-11-10 at 2.29.28 PM.png
   const fetchImage = async (imageName) => {
-    const url = `http://34.46.36.202/static/${encodeURIComponent(imageName)}`;
+    const url = `http://35.208.97.216/static/${encodeURIComponent(imageName)}`;
     try {
       const response = await fetch(url, imageRequestOptions);
       if (!response.ok) {
@@ -59,7 +59,7 @@ const ViolationList = () => {
       const startDate = start.format('YYYY-MM-DD');
       const endDate = end.format('YYYY-MM-DD');
       const response = await fetch(
-        `http://34.46.36.202/reports/detections?start_date=${startDate}&end_date=${endDate}`,
+        `http://35.208.97.216/reports/detections?start_date=${startDate}&end_date=${endDate}`,
         detectionOptions
       );
       if (!response.ok) {

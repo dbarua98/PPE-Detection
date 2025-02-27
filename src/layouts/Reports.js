@@ -64,7 +64,7 @@ const ReportsCharts = () => {
     const startDate = range[0].format("YYYY-MM-DD");
     const endDate = range[1].format("YYYY-MM-DD");
     fetch(
-      `http://34.46.36.202/reports/summary?start_date=${startDate}&end_date=${endDate}`,
+      `http://35.208.97.216/reports/summary?start_date=${startDate}&end_date=${endDate}`,
       getRequestOptions()
     )
       .then((response) => {
@@ -88,7 +88,7 @@ const ReportsCharts = () => {
     const startDate = range[0].format("YYYY-MM-DD");
     const endDate = range[1].format("YYYY-MM-DD");
     fetch(
-      `http://34.46.36.202/reports/daily?start_date=${startDate}&end_date=${endDate}`,
+      `http://35.208.97.216/reports/daily?start_date=${startDate}&end_date=${endDate}`,
       getRequestOptions()
     )
       .then((response) => response.text())

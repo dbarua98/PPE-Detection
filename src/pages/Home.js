@@ -11,6 +11,9 @@ import ViolationList from "../layouts/ViolationList";
 import "./Home.scss";
 import { settingIcon } from "../utils/base-64-Icons";
 
+// Import the logo image
+import logo from "../images/logo.png";
+
 const Home = () => {
   const [isUILoaded, setIsUILoaded] = useState(false);
   const [addCameraPopup, setAddCameraPopup] = useState(false);
@@ -22,6 +25,27 @@ const Home = () => {
   const [VisibleCams, setVisibleCams] = useState([]);
   const [cameras, setCameras] = useState([]);
   const cameraRefs = useRef([]);
+  const [username, setUsername] = useState("");
+
+  // Fetch username from API
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const myHeaders = new Headers();
+    myHeaders.append("X-Session-Token", token);
+
+    const requestOptions = {
+      method: "GET",
+      headers: myHeaders,
+      redirect: "follow",
+    };
+
+    fetch("http://35.208.97.216/auth", requestOptions)
+      .then((response) => response.json())
+      .then((result) => {
+        setUsername(result.username);
+      })
+      .catch((error) => console.error(error));
+  }, []);
 
   const fetchCameras = async () => {
     try {
@@ -78,7 +102,7 @@ const Home = () => {
           }
         });
         if (hasValidImages) {
-          return fetch("http://34.46.36.202/ppe/detect", {
+          return fetch("http://35.208.97.216/ppe/detect", {
             method: "POST",
             headers: {
               "X-Session-Token": "bb86b35928774a05a615e6f0a6d1c031",
@@ -207,11 +231,14 @@ const Home = () => {
     <div className="px-5 mx-5">
       <div className="mt-2">
         <div className="d-flex justify-content-between">
-          <h2>Logo</h2>
+          {/* Replace text "Logo" with your image */}
+          <img src={logo} alt="Logo" width={100} />
+
           <div className="d-flex mt-2">
             <div className="d-flex border rounded-3 align-items-center px-2 gap-2 h-75 py-2">
               <Avatar style={{ backgroundColor: "#87d068" }} icon={<UserOutlined />} />
-              <p className="m-0">{"Deepesh"}</p>
+              {/* Render fetched username; fallback to empty string */}
+              <p className="m-0">{username}</p>
             </div>
             <Dropdown menu={menuProps} className="h-75 setting-icon" trigger={["click"]} arrow>
               <Button>
@@ -233,7 +260,11 @@ const Home = () => {
       {(tabKey === "2" || tabKey === "3") && (
         <div>
           {cameras?.map((camera, index) => (
-            <div key={camera.camera_unique_id} className="camera-item" style={{ position: "absolute", left: "-9999px", top: "-9999px" }}>
+            <div
+              key={camera.camera_unique_id}
+              className="camera-item"
+              style={{ position: "absolute", left: "-9999px", top: "-9999px" }}
+            >
               <img
                 ref={(el) => (cameraRefs.current[index] = el)}
                 data-camera-id={camera?.camera_unique_id}

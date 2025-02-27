@@ -1,7 +1,6 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useState } from "react";
 import { EyeInvisibleOutlined, EyeTwoTone } from "@ant-design/icons";
-import { Button, Form, Input, Space } from "antd";
-import { Typography } from "antd";
+import { Button, Form, Input, Space, Typography, message } from "antd";
 import loginImage from "../images/login.png";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/auth";
@@ -13,10 +12,9 @@ const Login = () => {
   const navigate = useNavigate();
   const { signIn } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [invalidCredential, setInvalidCredential] = useState();
-  // const formData = useRef({ email: '', password: '' });
+  const [invalidCredential, setInvalidCredential] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const initialFormData={
+  const initialFormData = {
     firstName: "",
     lastName: "",
     companyName: "",
@@ -24,7 +22,7 @@ const Login = () => {
     email: "",
     password: "",
     confirmPassword: "",
-  }
+  };
   const [formData, setFormData] = useState(initialFormData);
   const [forgetPassword, setForgetPassword] = useState(false);
   const [updatePassword, setUpdatePassword] = useState(false);
@@ -51,81 +49,51 @@ const Login = () => {
   const validateForm = () => {
     let hasError = false;
     const newErrors = {};
-    // login
+    // For login and forget password scenarios
     if (!forgetPassword && !createNewUser) {
-      for (const key in formData) {
-        if (
-          (key == "email" && !formData[key]) ||
-          (key == "password" && !formData[key])
-        ) {
-          newErrors[key] = true;
-          hasError = true;
-        }
-        else if (
-          key === "email" &&
-          (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData[key]))
-        ) {
-          setEmailInvalid(true); 
-          hasError = true;
-        } 
-
-        //  else if (key === 'mobileNo' && patientAppointment[key].length < 10) {
-        //     setMobileValid(true);
-        //     hasError = true;
-        // } else {
-        //     newErrors[key] = false;
-        // }
-        // setErrors(newErrors);
-        // return hasError;
+      if (!formData.email) {
+        newErrors.email = true;
+        hasError = true;
+      }
+      if (!formData.password) {
+        newErrors.password = true;
+        hasError = true;
+      }
+      if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        setEmailInvalid(true);
+        hasError = true;
       }
     }
-    // forgetPassword
+    // For forget password scenario
     if (forgetPassword) {
-      for (const key in formData) {
-        if (key == "email" && !formData[key]) {
-          newErrors[key] = true;
-          hasError = true;
-        }
-        else if (
-          key === "email" &&
-          (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData[key]))
-        ) {
-          setEmailInvalid(true); 
-          hasError = true;
-        } 
-
-        //  else if (key === 'mobileNo' && patientAppointment[key].length < 10) {
-        //     setMobileValid(true);
-        //     hasError = true;
-        // } else {
-        //     newErrors[key] = false;
-        // }
-        // setErrors(newErrors);
-        // return hasError;
+      if (!formData.email) {
+        newErrors.email = true;
+        hasError = true;
+      }
+      if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        setEmailInvalid(true);
+        hasError = true;
       }
     }
-    // create new user
+    // For create new user scenario
     if (createNewUser) {
-      debugger;
       for (const key in formData) {
         if (!formData[key]) {
           newErrors[key] = true;
           hasError = true;
         } else if (
           key === "phoneNumber" &&
-          (formData[key].length < 10 )
+          formData[key].length < 10
         ) {
           setMobileInValid(true);
           hasError = true;
-        } 
-        else if (
+        } else if (
           key === "email" &&
           (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData[key]))
         ) {
-          setEmailInvalid(true); 
+          setEmailInvalid(true);
           hasError = true;
-        } 
-        else {
+        } else {
           newErrors[key] = false;
         }
       }
@@ -133,13 +101,15 @@ const Login = () => {
     setErrors(newErrors);
     return hasError;
   };
-  console.log("new errors", errors);
 
   const onSubmit = async (e) => {
+    debugger
     e.preventDefault();
-    if (validateForm()) {
-      return;
-    }
+    setLoading(true);
+    // if (validateForm()) {
+    //   setLoading(false);
+    //   return;
+    // }
     const {
       email,
       password,
@@ -150,30 +120,55 @@ const Login = () => {
       confirmPassword,
     } = formData;
     if (!forgetPassword && !createNewUser) {
+      // Login scenario
       const result = await signIn(email, password);
       if (!result.isOk) {
         setLoading(false);
         setInvalidCredential(result.message);
       }
     } else if (forgetPassword) {
+      // Forget password scenario
       const result = await resetPassword(email);
       if (!result.isOk) {
         setLoading(false);
         setInvalidCredential(result.message);
       }
     } else {
-      const result = await createAccount(
-        email,
-        password,
-        firstName,
-        lastName,
-        phoneNumber,
-        companyName,
-        confirmPassword
-      );
-      if (!result.isOk) {
+      
+      // Create New User scenario
+      // NOTE: We use firstName as username in this example. Adjust if needed.
+      const myHeaders = new Headers();
+      myHeaders.append("Content-Type", "application/json");
+
+      const raw = JSON.stringify({
+        username: firstName,
+        email: email,
+        password: password,
+      });
+
+      const requestOptions = {
+        method: "POST",
+        headers: myHeaders,
+        body: raw,
+        redirect: "follow",
+      };
+
+      try {
+        const response = await fetch("http://35.208.97.216/auth/signup", requestOptions);
+        const resultJson = await response.json();
+        console.log(resultJson);
+        if (response.ok) {
+          message.success("Account created successfully! Please log in.");
+          setFormData(initialFormData);
+          setCreateNewUser(false);
+        } else {
+          setInvalidCredential(resultJson.message || "Signup failed. Please try again.");
+        }
+      } catch (error) {
+        console.error(error);
+        setInvalidCredential("Signup failed. Please try again.");
+      } finally {
         setLoading(false);
-        setInvalidCredential(result.message);
       }
     }
   };
@@ -181,49 +176,43 @@ const Login = () => {
   const backToLoginFromForget = () => {
     setForgetPassword(false);
     setErrors(initialErrors);
-    setEmailInvalid(false)
-    setMobileInValid(false)
-    setFormData(initialFormData)
+    setEmailInvalid(false);
+    setMobileInValid(false);
+    setFormData(initialFormData);
   };
+
   const onCreateUserClick = () => {
     setCreateNewUser(true);
     setErrors(initialErrors);
-    setEmailInvalid(false)
-    setMobileInValid(false)
-    setFormData(initialFormData)
-
+    setEmailInvalid(false);
+    setMobileInValid(false);
+    setFormData(initialFormData);
   };
+
   const onForgetPasswordClick = () => {
     setForgetPassword(true);
     setErrors(initialErrors);
-    setEmailInvalid(false)
-    setMobileInValid(false)
-    setFormData(initialFormData)
-
+    setEmailInvalid(false);
+    setMobileInValid(false);
+    setFormData(initialFormData);
   };
+
   const onUpdatePasswordClick = () => {
     setUpdatePassword(true);
-    // setErrors(initialErrors);
-    // setEmailInvalid(false)
-    // setMobileInValid(false)
-    // setFormData(initialFormData)
-
   };
 
   const backToLoginFromSignup = () => {
     setCreateNewUser(false);
     setErrors(initialErrors);
-    setEmailInvalid(false)
-    setMobileInValid(false)
-    setFormData(initialFormData)
-
+    setEmailInvalid(false);
+    setMobileInValid(false);
+    setFormData(initialFormData);
   };
+
   return (
     <div className="container">
       <div
-        className="row vh-100 align-content-center
-     d-flex justify-content-evenly
-     "
+        className="row vh-100 align-content-center d-flex justify-content-evenly"
       >
         <div className="col-5 h-50 d-flex flex-column justify-content-center gap-5 mt-5">
           {!forgetPassword && !createNewUser && (
@@ -245,12 +234,15 @@ const Login = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                 />
-                {errors.email?<p style={{ fontSize: "x-small", color: "red" }}>
-                  {errors.email ? "Please Enter Email" : ""}
-                </p>:
-                <p style={{ fontSize: "x-small", color: "red" }}>
-                  {emailInvalid ? "Please Enter Valid EmailId" : ""}
-                </p>}
+                {errors.email ? (
+                  <p style={{ fontSize: "x-small", color: "red" }}>
+                    Please Enter Email
+                  </p>
+                ) : (
+                  <p style={{ fontSize: "x-small", color: "red" }}>
+                    {emailInvalid ? "Please Enter Valid EmailId" : ""}
+                  </p>
+                )}
               </div>
               <div className="w-75 my-3">
                 <Text type="secondary" className="fw-semibold">
@@ -272,11 +264,7 @@ const Login = () => {
               </div>
 
               <div
-                className={`d-flex  w-75 ${
-                  invalidCredential
-                    ? "justify-content-between"
-                    : "justify-content-end"
-                }  `}
+                className={`d-flex w-75 ${invalidCredential ? "justify-content-between" : "justify-content-end"}`}
               >
                 {invalidCredential && (
                   <span className="fst-normal text-danger fw-semibold">
@@ -286,10 +274,9 @@ const Login = () => {
                 <span
                   className="text-decoration-underline btn-link"
                   style={{ cursor: "pointer" }}
-                  // onClick={() => setForgetPassword(true)}
-                  onClick={() => onForgetPasswordClick()}
+                  onClick={onForgetPasswordClick}
                 >
-                  {"Forget/Reset Password ?"}
+                  Forget/Reset Password ?
                 </span>
               </div>
               <Button
@@ -306,7 +293,7 @@ const Login = () => {
                 style={{ background: "#3c9c70" }}
                 type="primary"
                 className="rounded-5 p-3 w-75 h-auto mt-3"
-                onClick={() => onCreateUserClick()}
+                onClick={onCreateUserClick}
               >
                 Create New User
               </Button>
@@ -330,30 +317,23 @@ const Login = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                 />
-                
-                
               </div>
-              <div
-                className={`d-flex  w-75 ${
-                
-                  "justify-content-between"
-                    
-                }  `}
-              >
-
-{errors.email ?<p style={{ fontSize: "x-small", color: "red" }}>
-                  {errors.email ? "Please Enter Email" : ""}
-                </p>:
-                <p style={{ fontSize: "x-small", color: "red" }}>
-                  {emailInvalid ? "Please Enter Valid EmailId" : ""}
-                </p>}
+              <div className="d-flex w-75 justify-content-between">
+                {errors.email ? (
+                  <p style={{ fontSize: "x-small", color: "red" }}>
+                    Please Enter Email
+                  </p>
+                ) : (
+                  <p style={{ fontSize: "x-small", color: "red" }}>
+                    {emailInvalid ? "Please Enter Valid EmailId" : ""}
+                  </p>
+                )}
                 <span
                   className="text-decoration-underline btn-link"
                   style={{ cursor: "pointer" }}
-                  // onClick={() => setForgetPassword(true)}
-                  onClick={() => onUpdatePasswordClick()}
+                  onClick={onUpdatePasswordClick}
                 >
-                  {"Update Password ?"}
+                  Update Password ?
                 </span>
               </div>
               <Button
@@ -369,8 +349,7 @@ const Login = () => {
                 style={{ background: "#3c9c70" }}
                 type="primary"
                 className="rounded-5 p-3 w-75 h-auto mt-3"
-                // onClick={() => setForgetPassword(false)}
-                onClick={() => backToLoginFromForget()}
+                onClick={backToLoginFromForget}
               >
                 Back To Login
               </Button>
@@ -385,7 +364,7 @@ const Login = () => {
               </div>
               <div className="w-75 my-3">
                 <Text type="secondary" className="fw-semibold">
-                  First Name
+                  User Name
                 </Text>
                 <Input
                   name="firstName"
@@ -398,67 +377,6 @@ const Login = () => {
                   {errors.firstName ? "Please Enter First Name" : ""}
                 </p>
               </div>
-
-              <div className="w-75 my-3">
-                <Text type="secondary" className="fw-semibold">
-                  Last Name
-                </Text>
-                <Input
-                  name="lastName"
-                  placeholder="Last Name"
-                  className="h-75"
-                  value={formData.lastName}
-                  onChange={handleInputChange}
-                />
-                <p style={{ fontSize: "x-small", color: "red" }}>
-                  {errors.lastName ? "Please Enter Last Name" : ""}
-                </p>
-              </div>
-
-              <div className="w-75 my-3">
-                <Text type="secondary" className="fw-semibold">
-                  Company Name
-                </Text>
-                <Input
-                  name="companyName"
-                  placeholder="Company Name"
-                  className="h-75"
-                  value={formData.companyName}
-                  onChange={handleInputChange}
-                />
-                <p style={{ fontSize: "x-small", color: "red" }}>
-                  {errors.lastName ? "Please Enter Company Name" : ""}
-                </p>
-              </div>
-
-              <div className="w-75 my-3">
-                <Text type="secondary" className="fw-semibold">
-                  Phone Number
-                </Text>
-                <Input
-                  name="phoneNumber"
-                  placeholder="Phone Number"
-                  className="h-75"
-                  value={formData.phoneNumber}
-                  onChange={(e) => {
-                    const { value } = e.target;
-                    if (/^\d*$/.test(value)) {
-                      // Only allow digits
-                      handleInputChange(e); // Call the handler if valid
-                    }
-                  }}
-                />
-                {errors.phoneNumber ? (
-                  <p style={{ fontSize: "x-small", color: "red" }}>
-                    {errors.phoneNumber ? "Please Enter Phone Number" : ""}
-                  </p>
-                ) : (
-                  <p style={{ fontSize: "x-small", color: "red" }}>
-                    {mobileInValid ? "Please Enter 10 digits" : ""}
-                  </p>
-                )}
-              </div>
-
               <div className="w-75 my-3">
                 <Text type="secondary" className="fw-semibold">
                   Email Address or Username
@@ -470,14 +388,16 @@ const Login = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                 />
-                {errors.email?<p style={{ fontSize: "x-small", color: "red" }}>
-                  {errors.email ? "Please Enter Email" : ""}
-                </p>:
-                <p style={{ fontSize: "x-small", color: "red" }}>
-                  {emailInvalid ? "Please Enter Valid EmailId" : ""}
-                </p>}
+                {errors.email ? (
+                  <p style={{ fontSize: "x-small", color: "red" }}>
+                    Please Enter Email
+                  </p>
+                ) : (
+                  <p style={{ fontSize: "x-small", color: "red" }}>
+                    {emailInvalid ? "Please Enter Valid EmailId" : ""}
+                  </p>
+                )}
               </div>
-
               <div className="w-75 my-3">
                 <Text type="secondary" className="fw-semibold">
                   Password
@@ -486,7 +406,6 @@ const Login = () => {
                   name="password"
                   className="h-75"
                   placeholder="Password"
-                  // iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
                   value={formData.password}
                   onChange={handleInputChange}
                 />
@@ -494,7 +413,6 @@ const Login = () => {
                   {errors.password ? "Please Enter Password" : ""}
                 </p>
               </div>
-
               <div className="w-75 my-3">
                 <Text type="secondary" className="fw-semibold">
                   Confirm Password
@@ -503,7 +421,6 @@ const Login = () => {
                   name="confirmPassword"
                   className="h-75"
                   placeholder="Confirm Password"
-                  // iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                 />
@@ -511,7 +428,6 @@ const Login = () => {
                   {errors.password ? "Please Confirm Password" : ""}
                 </p>
               </div>
-
               <Button
                 htmlType="submit"
                 style={{ background: "#382e99" }}
@@ -520,14 +436,12 @@ const Login = () => {
               >
                 Sign Up
               </Button>
-
               <Button
                 htmlType="button"
                 style={{ background: "#3c9c70" }}
                 type="primary"
                 className="rounded-5 p-3 w-75 h-auto mt-3"
-                // onClick={() => setCreateNewUser(false)}
-                onClick={() => backToLoginFromSignup()}
+                onClick={backToLoginFromSignup}
               >
                 Back To Login
               </Button>
@@ -535,11 +449,7 @@ const Login = () => {
           )}
         </div>
         <div className="col-6">
-          <img
-            src={loginImage}
-            style={{ height: "70vh" }}
-            className="rounded-5"
-          />
+          <img src={loginImage} style={{ height: "70vh" }} className="rounded-5" />
         </div>
       </div>
     </div>
