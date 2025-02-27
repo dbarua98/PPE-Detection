@@ -327,7 +327,7 @@ const ViolationCamera = (props) => {
             </Dropdown>
           </div>
           <div className="mt-5">
-            <div className="row">
+           { list.length>0?<div className="row">
               {visibleVideos.length === 2 ? (
                 visibleVideos.map((video, i) => (
                   <div key={i} className="col-12 col-md-6">
@@ -499,6 +499,20 @@ const ViolationCamera = (props) => {
                       })}
                       onClick={() => handleVideoClick(0)}
                     >
+                      <div
+                        className="camera-label position-absolute bg-dark-subtle rounded-4 fw-bold h6 p-2 px-3 opacity-75 text-center w-auto"
+                        style={{
+                          cursor: "pointer",
+                          zIndex: 1000,
+                          // marginTop: "-82px",
+                          marginTop: "480px",
+                          width: "20%",
+                          marginLeft: "20px",
+                        }}
+                        onClick={() => openFullScreenView(list[1]?.ip)}
+                      >
+                        CAM 1
+                      </div>
                       <img
                         ref={(el) => assignRef(visibleVideos[0], el)}
                         data-camera-id={visibleVideos[0]?.camera_unique_id}
@@ -517,19 +531,7 @@ const ViolationCamera = (props) => {
                         muted
                         onClick={() => openFullScreenView(list[0]?.ip)}
                       />
-                      <div
-                        className="camera-label position-absolute bg-dark-subtle rounded-4 fw-bold h6 p-2 px-3 opacity-75 text-center w-auto"
-                        style={{
-                          cursor: "pointer",
-                          zIndex: 1000,
-                          marginTop: "-82px",
-                          width: "20%",
-                          marginLeft: "20px",
-                        }}
-                        onClick={() => openFullScreenView(list[1]?.ip)}
-                      >
-                        CAM 1
-                      </div>
+                      
                     </div>
                   </div>
                   <div className="col-12 col-lg-6 small-grid">
@@ -618,7 +620,7 @@ const ViolationCamera = (props) => {
                   </div>
                 </>
               )}
-            </div>
+            </div>:<></>}
           </div>
           <div>
             <Dropdown

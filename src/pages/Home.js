@@ -232,7 +232,7 @@ const Home = () => {
       <div className="mt-2">
         <div className="d-flex justify-content-between">
           {/* Replace text "Logo" with your image */}
-          <img src={logo} alt="Logo" width={100} />
+          <img src={logo} alt="Logo" width={75} style={{borderRadius:"50px"}}/>
 
           <div className="d-flex mt-2">
             <div className="d-flex border rounded-3 align-items-center px-2 gap-2 h-75 py-2">
