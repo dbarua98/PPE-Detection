@@ -26,7 +26,7 @@ const Home = () => {
   const [cameras, setCameras] = useState([]);
   const cameraRefs = useRef([]);
   const [username, setUsername] = useState("");
-
+  const baseURL = process.env.REACT_APP_BASE_URL;
   // Fetch username from API
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -38,8 +38,7 @@ const Home = () => {
       headers: myHeaders,
       redirect: "follow",
     };
-
-    fetch("http://35.208.97.216/auth", requestOptions)
+    fetch(`${baseURL}/auth`, requestOptions)
       .then((response) => response.json())
       .then((result) => {
         setUsername(result.username);
@@ -102,7 +101,7 @@ const Home = () => {
           }
         });
         if (hasValidImages) {
-          return fetch("http://35.208.97.216/ppe/detect", {
+          return fetch(`${baseURL}/ppe/detect`, {
             method: "POST",
             headers: {
               "X-Session-Token": "bb86b35928774a05a615e6f0a6d1c031",

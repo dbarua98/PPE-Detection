@@ -46,7 +46,7 @@ const ReportsCharts = () => {
     moment("2023-01-01"),
     moment("2025-03-31"),
   ]);
-
+  const baseURL = process.env.REACT_APP_BASE_URL;
   // Helper function to create common request options
   const getRequestOptions = () => {
     const myHeaders = new Headers();
@@ -63,8 +63,9 @@ const ReportsCharts = () => {
     setLoadingSummary(true);
     const startDate = range[0].format("YYYY-MM-DD");
     const endDate = range[1].format("YYYY-MM-DD");
+
     fetch(
-      `http://35.208.97.216/reports/summary?start_date=${startDate}&end_date=${endDate}`,
+      `${baseURL}/reports/summary?start_date=${startDate}&end_date=${endDate}`,
       getRequestOptions()
     )
       .then((response) => {
@@ -88,7 +89,7 @@ const ReportsCharts = () => {
     const startDate = range[0].format("YYYY-MM-DD");
     const endDate = range[1].format("YYYY-MM-DD");
     fetch(
-      `http://35.208.97.216/reports/daily?start_date=${startDate}&end_date=${endDate}`,
+      `${baseURL}/reports/daily?start_date=${startDate}&end_date=${endDate}`,
       getRequestOptions()
     )
       .then((response) => response.text())

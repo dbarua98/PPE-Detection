@@ -168,7 +168,7 @@ const ViolationCamera = (props) => {
           // Only make the API call if we have valid images 
           if (hasValidImages) { 
             console.log("Sending FormData with cameras:", formData.getAll); 
-            return fetch("http://35.208.97.216/ppe/detect", { 
+            return fetch(`${baseURL}/ppe/detect`, { 
               method: "POST", 
               headers: { 
                 "X-Session-Token": "bb86b35928774a05a615e6f0a6d1c031", 
@@ -543,6 +543,17 @@ const ViolationCamera = (props) => {
                             style={getCameraStyle(visibleVideos[i]?.camera_unique_id)}
                             onClick={() => openFullScreenView(list[i]?.ip)}
                           >
+                            <div
+                              className="camera-label position-absolute bg-dark-subtle rounded-4 fw-bold h6 p-2 opacity-75 text-center"
+                              style={{
+                                cursor: "pointer",
+                                zIndex: 1000,
+                                marginTop: "200px",
+                                width: "24%",
+                                marginLeft: "20px",
+                              }}
+                              onClick={() => openFullScreenView(list[i]?.ip)}
+                            >{`CAM ${i + 2}`}</div>
                             <img
                               ref={(el) => assignRef(visibleVideos[i + 1], el)}
                               data-camera-id={
@@ -562,17 +573,7 @@ const ViolationCamera = (props) => {
                               muted
                               onClick={() => openFullScreenView(list[i]?.ip)}
                             />
-                            <div
-                              className="camera-label position-absolute bg-dark-subtle rounded-4 fw-bold h6 p-2 opacity-75 text-center"
-                              style={{
-                                cursor: "pointer",
-                                zIndex: 1000,
-                                marginTop: "-70px",
-                                width: "20%",
-                                marginLeft: "20px",
-                              }}
-                              onClick={() => openFullScreenView(list[i]?.ip)}
-                            >{`CAM ${i + 2}`}</div>
+                            
                           </div>
                         </div>
                       ))}

@@ -14,7 +14,7 @@ const ViolationList = () => {
   // Set default date range using moment objects
   const defaultRange = [moment('2025-01-01'), moment('2025-03-31')];
   const [dateRange, setDateRange] = useState(defaultRange);
-
+  const baseURL = process.env.REACT_APP_BASE_URL;
   // Prepare headers and options for the detections API
   const detectionHeaders = new Headers();
   detectionHeaders.append('X-Session-Token', 'bb86b35928774a05a615e6f0a6d1c031');
@@ -35,7 +35,7 @@ const ViolationList = () => {
   // This uses the API endpoint as described:
   // static/2_20250208100634_Screenshot 2024-11-10 at 2.29.28 PM.png
   const fetchImage = async (imageName) => {
-    const url = `http://35.208.97.216/static/${encodeURIComponent(imageName)}`;
+    const url = `${baseURL}/static/${encodeURIComponent(imageName)}`;
     try {
       const response = await fetch(url, imageRequestOptions);
       if (!response.ok) {
@@ -59,7 +59,7 @@ const ViolationList = () => {
       const startDate = start.format('YYYY-MM-DD');
       const endDate = end.format('YYYY-MM-DD');
       const response = await fetch(
-        `http://35.208.97.216/reports/detections?start_date=${startDate}&end_date=${endDate}`,
+        `${baseURL}/reports/detections?start_date=${startDate}&end_date=${endDate}`,
         detectionOptions
       );
       if (!response.ok) {

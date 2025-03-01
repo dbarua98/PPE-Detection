@@ -40,7 +40,7 @@ const Login = () => {
     confirmPassword: false,
   };
   const [errors, setErrors] = useState(initialErrors);
-
+  const baseURL = process.env.REACT_APP_BASE_URL;
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
@@ -154,7 +154,7 @@ const Login = () => {
       };
 
       try {
-        const response = await fetch("http://35.208.97.216/auth/signup", requestOptions);
+        const response = await fetch(`${baseURL}/auth/signup`, requestOptions);
         const resultJson = await response.json();
         console.log(resultJson);
         if (response.ok) {

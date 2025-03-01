@@ -10,6 +10,7 @@ const ChangePasswordPopup = (props) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [passwordMatch, setPasswordMatch] = useState(false);
+  const baseURL = process.env.REACT_APP_BASE_URL;
 
   const handleOk = async () => {
     debugger
@@ -26,7 +27,9 @@ const ChangePasswordPopup = (props) => {
     const token = localStorage.getItem('token');
 
     try {
-      const response = await fetch("http://35.208.97.216:80/auth/change-password", {
+      const url = `${baseURL}/auth/login`;
+
+      const response = await fetch(`${baseURL}/auth/change-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
