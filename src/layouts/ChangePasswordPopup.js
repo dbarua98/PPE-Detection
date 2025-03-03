@@ -27,8 +27,6 @@ const ChangePasswordPopup = (props) => {
     const token = localStorage.getItem('token');
 
     try {
-      const url = `${baseURL}/auth/login`;
-
       const response = await fetch(`${baseURL}/auth/change-password`, {
         method: "POST",
         headers: {

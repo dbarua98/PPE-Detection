@@ -490,8 +490,10 @@ const ViolationCamera = (props) => {
                     <div
                       className="gallery-item position-relative"
                       style={getCameraStyle(visibleVideos[0]?.camera_unique_id, {
-                        height: "545px",
-                        width: "670px",
+                        // height: "545px",
+                        // width: "670px",
+                        height:"99%",
+                        width:"100%",
                         backgroundColor: "black",
                         cursor: "pointer",
                         borderRadius:"16px",
@@ -505,7 +507,8 @@ const ViolationCamera = (props) => {
                           cursor: "pointer",
                           zIndex: 1000,
                           // marginTop: "-82px",
-                          marginTop: "480px",
+                          // marginTop: "480px",
+                          marginTop:"65%",
                           width: "20%",
                           marginLeft: "20px",
                         }}
@@ -535,7 +538,7 @@ const ViolationCamera = (props) => {
                     </div>
                   </div>
                   <div className="col-12 col-lg-6 small-grid">
-                    <div className="row">
+                    <div className="row" style={{height:"100%" , rowGap:"8px"}}>
                       {visibleVideos.slice(1).map((video, i) => (
                         <div key={i} className="col-6 small">
                           <div
@@ -548,8 +551,9 @@ const ViolationCamera = (props) => {
                               style={{
                                 cursor: "pointer",
                                 zIndex: 1000,
-                                marginTop: "200px",
-                                width: "24%",
+                                // marginTop: "200px",
+                                marginTop:"56%",
+                                width: "fit-content",
                                 marginLeft: "20px",
                               }}
                               onClick={() => openFullScreenView(list[i]?.ip)}
@@ -563,7 +567,8 @@ const ViolationCamera = (props) => {
                               alt="IP Camera"
                               crossOrigin="anonymous"
                               style={{
-                                height: "270px",
+                                // height: "270px",
+                                height:"100%",
                                 width: "100%",
                                 cursor: "pointer",
                               }}

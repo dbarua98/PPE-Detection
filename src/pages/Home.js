@@ -27,6 +27,7 @@ const Home = () => {
   const cameraRefs = useRef([]);
   const [username, setUsername] = useState("");
   const baseURL = process.env.REACT_APP_BASE_URL;
+
   // Fetch username from API
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -46,9 +47,41 @@ const Home = () => {
       .catch((error) => console.error(error));
   }, []);
 
+  // Notification API call using EventSource for real-time notifications
+  useEffect(() => {
+    const eventSource = new EventSource("http://35.208.97.216/notifications");
+
+    eventSource.onmessage = (e) => {
+      let dataStr = e.data;
+      // Remove prefix "data: " if present
+      if (dataStr.startsWith("data: ")) {
+        dataStr = dataStr.slice("data: ".length);
+      }
+      try {
+        const data = JSON.parse(dataStr);
+        // Check if violation info exists and display a toast notification
+        if (data && data.camera_unique_id && data.violations) {
+          message.info(
+            `Violation detected on ${data.camera_unique_id}: ${data.violations.join(", ")}`
+          );
+        }
+      } catch (error) {
+        console.error("Error parsing notification:", error);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error("EventSource error:", err);
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, []);
+
   const fetchCameras = async () => {
     try {
-      const baseURL = process.env.REACT_APP_BASE_URL;
       const response = await axios.get(`${baseURL}/camera/list`);
       if (response.status === 200) {
         setCameras(response.data);
@@ -231,7 +264,7 @@ const Home = () => {
       <div className="mt-2">
         <div className="d-flex justify-content-between">
           {/* Replace text "Logo" with your image */}
-          <img src={logo} alt="Logo" width={75} style={{borderRadius:"50px"}}/>
+          <img src={logo} alt="Logo" width={75} style={{ borderRadius: "50px" }} />
 
           <div className="d-flex mt-2">
             <div className="d-flex border rounded-3 align-items-center px-2 gap-2 h-75 py-2">
